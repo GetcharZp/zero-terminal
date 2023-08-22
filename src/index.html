@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh">
+
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
@@ -10,85 +11,159 @@
     <script src="assets/js/xterm.js" type="application/javascript"></script>
     <title>Zero Terminal</title>
 </head>
+
 <body>
 
-<div id="app">
-    <div v-if="connectionList.length > 0"> --main-- </div>
-    <div v-else class="card center" style="width: 50%;">
-        <div class="card-body">
-            <h5 class="card-title">创建/编辑 SSH连接</h5>
-            <div class="card-text">
-                <div class="input-group mt-4">
-                    <label class="input-group-text" id="label-name" for="name">连接名称</label>
-                    <input v-model="connection.name" type="text" class="form-control" id="name" placeholder="连接名称默认为连接地址">
-                </div>
-                <div class="d-flex mt-2">
-                    <div class="input-group">
-                        <label class="input-group-text" id="label-address" for="address">连接地址</label>
-                        <input v-model="connection.address" type="text" class="form-control" id="address" placeholder="请输入连接地址">
-                    </div>
-                    <div class="input-group">
-                        <label class="input-group-text" id="label-port" for="port">端口</label>
-                        <input v-model="connection.port" type="text" class="form-control" id="port" placeholder="端口号默认为 22">
+    <div id="app">
+        <div v-if="connectionList.length > 0" class="container zt-main">
+            <div class="row">
+                <!-- 连接列表 -->
+                <div class="col-md-3">
+                    <div class="zt-conn-main" v-for="conn in connectionList">
+                        <span style="cursor: pointer;">{{ conn.name }}</span>
+                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;">编辑</span>
+                        <span style="color: red;  margin-left: 10px; cursor: pointer;" @click="confirmDeleteConnection(conn)">删除</span>
                     </div>
                 </div>
-                <div class="input-group mt-2">
-                    <label class="input-group-text" id="label-username" for="username">用户名称</label>
-                    <input v-model="connection.username" type="text" class="form-control" id="username" placeholder="请输入用户名">
-                </div>
-                <div class="input-group mt-2">
-                    <label class="input-group-text" id="label-password" for="password">用户密码</label>
-                    <input v-model="connection.password" type="password" class="form-control" id="password" placeholder="请输入密码">
+                <!-- ssh 终端 -->
+                <div class="col-md-9">xterm</div>
+            </div>
+        </div>
+        <div v-else class="card center" style="width: 50%;">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveSshConnection" @click="createConnection">
+                创建 SSH 连接
+            </button>
+        </div>
+
+        <!-- 弹出框, 创建/编辑 SSH 连接 -->
+        <div class="modal fade" id="saveSshConnection" tabindex="-1" aria-labelledby="saveSshConnectionLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="exampleModalLabel">创建/编辑 SSH连接</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="input-group mt-2">
+                            <label class="input-group-text" id="label-name" for="name">连接名称</label>
+                            <input v-model="connection.name" type="text" class="form-control" id="name"
+                                placeholder="连接名称默认为连接地址">
+                        </div>
+                        <div class="d-flex mt-2">
+                            <div class="input-group">
+                                <label class="input-group-text" id="label-address" for="address">连接地址</label>
+                                <input v-model="connection.address" type="text" class="form-control" id="address"
+                                    placeholder="请输入连接地址">
+                            </div>
+                            <div class="input-group">
+                                <label class="input-group-text" id="label-port" for="port">端口</label>
+                                <input v-model="connection.port" type="text" class="form-control" id="port"
+                                    placeholder="端口号默认为 22">
+                            </div>
+                        </div>
+                        <div class="input-group mt-2">
+                            <label class="input-group-text" id="label-username" for="username">用户名称</label>
+                            <input v-model="connection.username" type="text" class="form-control" id="username"
+                                placeholder="请输入用户名">
+                        </div>
+                        <div class="input-group mt-2">
+                            <label class="input-group-text" id="label-password" for="password">用户密码</label>
+                            <input v-model="connection.password" type="password" class="form-control" id="password"
+                                placeholder="请输入密码">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="saveConnection">保存</button>
+                    </div>
                 </div>
             </div>
-            <div class="mt-2">
-                <button type="button" class="btn btn-light">取消</button>
-                <button type="button" class="btn btn-primary" @click="saveConnection">保存</button>
+        </div>
+
+        <!-- 弹出框, 确认删除 -->
+        <div class="modal fade" id="deleteSshConnection" tabindex="-1" aria-labelledby="deleteSshConnectionLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="exampleModalLabel">确认删除么?</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="deleteConnection">保存</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    const { ipcRenderer } = require('electron');
+    <script>
+        const { ipcRenderer } = require('electron');
 
-    new Vue({
-        el: '#app',
-        data: {
-            connectionList: [],
-            connection: {
-                identity: "",
-                name: "",
-                address: "",
-                port: "22",
-                username: "",
-                password: "",
-            }
-        },
-        mounted() {},
-        created() {
-            this.initConnections();
-        },
-        methods: {
-            initConnections() {
-                ipcRenderer.invoke('getConnectionList').then((data) => {
-                    if (data !== undefined) {
-                        this.connectionList = data
-                    }
-                });
-            },
-            saveConnection() {
-                if (this.connection.name === "") {
-                    this.connection.name = this.connection.address
+        new Vue({
+            el: '#app',
+            data: {
+                connectionList: [],
+                connection: {
+                    identity: "",
+                    name: "",
+                    address: "",
+                    port: "22",
+                    username: "",
+                    password: "",
                 }
-                ipcRenderer.invoke('saveConnection', this.connection).then((res) => {
-                    if (res.code === 200) {
-                        this.initConnections();
+            },
+            mounted() { },
+            created() {
+                this.initConnections();
+            },
+            methods: {
+                initConnections() {
+                    ipcRenderer.invoke('getConnectionList').then((data) => {
+                        if (data !== undefined) {
+                            this.connectionList = data
+                        }
+                    });
+                },
+                createConnection() { // 创建 SSH 连接时, connection 置空
+                    this.connection = {
+                        identity: "",
+                        name: "",
+                        address: "",
+                        port: "22",
+                        username: "",
+                        password: "",
                     }
-                }).catch(e => {})
+                },
+                saveConnection() {
+                    if (this.connection.name === "") {
+                        this.connection.name = this.connection.address;
+                    }
+                    ipcRenderer.invoke('saveConnection', this.connection).then((res) => {
+                        console.log(res)
+                    }).catch(e => { 
+                        console.log(e)
+                    });
+                    this.initConnections();
+                },
+                confirmDeleteConnection(conn) {
+                    this.connection.identity = conn.identity;
+                    var modal = new bootstrap.Modal(document.getElementById('deleteSshConnection'));
+                    modal.show();
+                },
+                deleteConnection() {
+                    ipcRenderer.invoke('deleteConnection', this.connection).then((res) => {
+                        console.log(res)
+                    }).catch(e => {
+                        console.log(e)
+                    });
+                    this.initConnections();
+                }
             }
-        }
-    })
-</script>
+        })
+    </script>
 </body>
+
 </html>

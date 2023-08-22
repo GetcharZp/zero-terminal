@@ -8,12 +8,12 @@ const store = new Store();
 const connectionKey = "CONNECTION_KEY";
 
 const newAppService = () => {
-    // 获取配置列表
+    // 获取连接列表
     ipcMain.handle('getConnectionList', () => {
         return store.get(connectionKey);
     })
 
-    // 保存配置
+    // 保存连接
     ipcMain.handle('saveConnection', (_, req) => {
         let connections = store.get(connectionKey) || [];
         if (req.identity === undefined || req.identity === "") { // 新增配置
@@ -30,6 +30,20 @@ const newAppService = () => {
         store.set(connectionKey, connections);
         return {"code": 200, "msg": "success"};
     })
+
+    // 删除连接
+    ipcMain.handle('deleteConnection', (_, req) => {
+        let connections = store.get(connectionKey) || [];
+        for (let i = 0; i < connections.length; i++) {
+            if (connections[i].identity === req.identity) {
+                connections.splice(i, 1)
+                break;
+            }
+        }
+        store.set(connectionKey, connections);
+        return {"code": 200, "msg": "success"};
+    })
+
     return ipcMain
 }
 
