@@ -19,9 +19,10 @@
             <div class="row">
                 <!-- 连接列表 -->
                 <div class="col-md-3">
+                    <div><button class="btn btn-primary" @click="createConnection">创建连接</button></div>
                     <div class="zt-conn-main" v-for="conn in connectionList">
                         <span style="cursor: pointer;">{{ conn.name }}</span>
-                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;">编辑</span>
+                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;" @click="editConnection(conn)">编辑</span>
                         <span style="color: red;  margin-left: 10px; cursor: pointer;" @click="confirmDeleteConnection(conn)">删除</span>
                     </div>
                 </div>
@@ -36,12 +37,12 @@
         </div>
 
         <!-- 弹出框, 创建/编辑 SSH 连接 -->
-        <div class="modal fade" id="saveSshConnection" tabindex="-1" aria-labelledby="saveSshConnectionLabel"
+        <div class="modal modal-lg fade" id="saveSshConnection" tabindex="-1" aria-labelledby="saveSshConnectionLabel"
             aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="exampleModalLabel">创建/编辑 SSH连接</h1>
+                        <h1 class="modal-title fs-5" id="saveSshConnectionLabel">创建/编辑 SSH连接</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -87,7 +88,7 @@
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="exampleModalLabel">确认删除么?</h1>
+                        <h1 class="modal-title fs-5" id="deleteSshConnectionLabel">确认删除么?</h1>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-footer">
@@ -128,6 +129,8 @@
                     });
                 },
                 createConnection() { // 创建 SSH 连接时, connection 置空
+                    let modal = new bootstrap.Modal(document.getElementById('saveSshConnection'));
+                    modal.show();
                     this.connection = {
                         identity: "",
                         name: "",
@@ -150,7 +153,12 @@
                 },
                 confirmDeleteConnection(conn) {
                     this.connection.identity = conn.identity;
-                    var modal = new bootstrap.Modal(document.getElementById('deleteSshConnection'));
+                    let modal = new bootstrap.Modal(document.getElementById('deleteSshConnection'));
+                    modal.show();
+                },
+                editConnection(conn) {
+                    this.connection = conn
+                    let modal = new bootstrap.Modal(document.getElementById('saveSshConnection'));
                     modal.show();
                 },
                 deleteConnection() {
@@ -160,7 +168,7 @@
                         console.log(e)
                     });
                     this.initConnections();
-                }
+                },
             }
         })
     </script>
