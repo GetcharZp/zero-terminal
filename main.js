@@ -51,3 +51,9 @@ app.on('window-all-closed', () => {
 electronReload(__dirname, {
     electron: path.join(__dirname, 'node_modules', '.bin', 'electron')
 });
+
+app.on('upgrade', function upgrade(request, socket, head) {
+    wss.handleUpgrade(request, socket, head, function done(ws) {
+        wss.emit('connection', ws, request);
+    });
+});

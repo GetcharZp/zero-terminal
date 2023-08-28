@@ -9,29 +9,35 @@
     <script src="assets/js/bootstrap.bundle.min.js" type="application/javascript"></script>
     <script src="assets/js/vue.min.js" type="application/javascript"></script>
     <script src="assets/js/xterm.js" type="application/javascript"></script>
+    <script src="assets/js/xterm-addon-fit.js" type="application/javascript"></script>
     <title>Zero Terminal</title>
 </head>
 
 <body>
 
     <div id="app">
-        <div v-if="connectionList.length > 0" class="container zt-main">
+        <div v-if="connectionList.length > 0" class="zt-main">
             <div class="row">
                 <!-- 连接列表 -->
                 <div class="col-md-3">
-                    <div><button class="btn btn-primary" @click="createConnection">创建连接</button></div>
+                    <div><button class="btn btn-primary" @click="createConnection" style="width: 100%; margin: 15px 0">创建连接</button></div>
                     <div class="zt-conn-main" v-for="conn in connectionList">
                         <span style="cursor: pointer;">{{ conn.name }}</span>
-                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;" @click="editConnection(conn)">编辑</span>
-                        <span style="color: red;  margin-left: 10px; cursor: pointer;" @click="confirmDeleteConnection(conn)">删除</span>
+                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;"
+                            @click="editConnection(conn)">编辑</span>
+                        <span style="color: red;  margin-left: 10px; cursor: pointer;"
+                            @click="confirmDeleteConnection(conn)">删除</span>
+                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;"
+                              @click="initTerminal(conn)">连接</span>
                     </div>
                 </div>
                 <!-- ssh 终端 -->
-                <div class="col-md-9">xterm</div>
+                <div id="terminal-container" class="col-md-9" v-pre></div>
             </div>
         </div>
         <div v-else class="card center" style="width: 50%;">
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveSshConnection" @click="createConnection">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveSshConnection"
+                @click="createConnection">
                 创建 SSH 连接
             </button>
         </div>
@@ -76,7 +82,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="saveConnection">保存</button>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal"
+                            @click="saveConnection">保存</button>
                     </div>
                 </div>
             </div>
@@ -93,7 +100,8 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="deleteConnection">保存</button>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal"
+                            @click="deleteConnection">确认</button>
                     </div>
                 </div>
             </div>
@@ -102,6 +110,7 @@
 
     <script>
         const { ipcRenderer } = require('electron');
+        const { Client } = require('ssh2');
 
         new Vue({
             el: '#app',
@@ -116,7 +125,8 @@
                     password: "",
                 }
             },
-            mounted() { },
+            mounted() {
+            },
             created() {
                 this.initConnections();
             },
@@ -126,6 +136,73 @@
                         if (data !== undefined) {
                             this.connectionList = data
                         }
+                    });
+                },
+                initTerminal(connection) { // 初始化终端
+                    // 获取终端容器元素
+                    let terminalElem = document.getElementById('terminal-container');
+
+                    // 创建 xterm 终端实例并打开
+                    let term = new Terminal();
+                    term.open(terminalElem);
+
+                    // 调整终端大小适应容器
+                    const fitAddon = new FitAddon.FitAddon();
+                    term.loadAddon(fitAddon);
+                    fitAddon.fit();
+
+                    let conn = new Client();
+                    let channel;
+
+                    // 连接成功时触发
+                    conn.on('ready', () => {
+                        console.log('SSH 连接已建立');
+                        term.write(`Zero Terminal Client. \r\n \r\n`);
+
+                        // 创建 SSH 通道
+                        conn.shell((err, ch) => {
+                            if (err) {
+                                console.error(err);
+                                term.writeln('创建 SSH 通道失败');
+                                term.dispose();
+                                return;
+                            }
+
+                            channel = ch;
+
+                            // 将通道的数据发送到终端
+                            channel.on('data', (data) => {
+                                term.write(data);
+                            });
+
+                            // 关闭 SSH 连接时关闭终端和通道
+                            conn.on('close', () => {
+                                term.dispose();
+                                channel.close();
+                            });
+                        });
+
+                        // 将终端的输出写入 SSH 通道
+                        term.onData((data) => {
+                            if (channel) {
+                                channel.write(data);
+                            }
+                        });
+                    });
+
+                    // 客户端错误时触发
+                    conn.on('error', (err) => {
+                        console.error('SSH 连接错误:', err);
+                        term.writeln('SSH 连接错误');
+                        term.dispose();
+                    });
+
+                    // 连接 ssh
+                    conn.connect({
+                        host: connection.address,
+                        port: connection.port,
+                        username: connection.username,
+                        password: connection.password
                     });
                 },
                 createConnection() { // 创建 SSH 连接时, connection 置空
@@ -146,7 +223,7 @@
                     }
                     ipcRenderer.invoke('saveConnection', this.connection).then((res) => {
                         console.log(res)
-                    }).catch(e => { 
+                    }).catch(e => {
                         console.log(e)
                     });
                     this.initConnections();

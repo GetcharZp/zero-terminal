@@ -6,12 +6,17 @@
 }
 
 .zt-main {
-    margin: 0 10px;
+    margin: 0 auto;
     padding: 0;
     word-wrap: break-word;
+    width: 98%;
 }
 
 .zt-conn-main {
     line-height: 35px;
     border-bottom: 1px solid;
+}
+
+#terminal-container {
+    height: 96vh;
 }
