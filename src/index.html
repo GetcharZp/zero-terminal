@@ -32,7 +32,16 @@
                     </div>
                 </div>
                 <!-- ssh 终端 -->
-                <div id="terminal-container" class="col-md-9" v-pre></div>
+                <div id="terminal-container" class="col-md-9">
+                    <ul class="nav nav-pills" style="margin: 10px 0;">
+                        <li class="nav-item" v-for="tab in core.tabs" @click="showTerm(tab)">
+                            <a class="nav-link" href="#" :class="{ 'active': tab.termId === core.activeId}">{{ tab.name }}</a>
+                        </li>
+                    </ul>
+                    <div v-for="tab in core.tabs">
+                        <div :id="tab.termId" v-show="tab.termId === core.activeId" style="height: 90vh;"></div>
+                    </div>
+                </div>
             </div>
         </div>
         <div v-else class="card center" style="width: 50%;">
@@ -123,7 +132,12 @@
                     port: "22",
                     username: "",
                     password: "",
-                }
+                },
+                core: {
+                    index: 0,
+                    activeId: "",
+                    tabs: []
+                },
             },
             mounted() {
             },
@@ -139,71 +153,89 @@
                     });
                 },
                 initTerminal(connection) { // 初始化终端
-                    // 获取终端容器元素
-                    let terminalElem = document.getElementById('terminal-container');
+                    // 激活ID
+                    let activeId = "zero-term" + this.core.index;
+                    this.core.activeId = activeId;
+                    // 新增导航
+                    this.core.tabs.push({
+                        name: connection.name,
+                        termId: activeId
+                    });
+                    // 最大 index 累加
+                    this.core.index++;
 
-                    // 创建 xterm 终端实例并打开
-                    let term = new Terminal();
-                    term.open(terminalElem);
+                    // 延时等待vue创建dom
+                    setTimeout(() => {
+                        // 获取终端容器元素
+                        // let terminalElem = document.getElementById('terminal-container');
+                        let terminalElem = document.getElementById(activeId);
 
-                    // 调整终端大小适应容器
-                    const fitAddon = new FitAddon.FitAddon();
-                    term.loadAddon(fitAddon);
-                    fitAddon.fit();
+                        // 创建 xterm 终端实例并打开
+                        let term = new Terminal();
+                        term.open(terminalElem);
 
-                    let conn = new Client();
-                    let channel;
+                        // 调整终端大小适应容器
+                        const fitAddon = new FitAddon.FitAddon();
+                        term.loadAddon(fitAddon);
+                        fitAddon.fit();
 
-                    // 连接成功时触发
-                    conn.on('ready', () => {
-                        console.log('SSH 连接已建立');
-                        term.write(`Zero Terminal Client. \r\n \r\n`);
+                        let conn = new Client();
+                        let channel;
 
-                        // 创建 SSH 通道
-                        conn.shell((err, ch) => {
-                            if (err) {
-                                console.error(err);
-                                term.writeln('创建 SSH 通道失败');
-                                term.dispose();
-                                return;
-                            }
+                        // 连接成功时触发
+                        conn.on('ready', () => {
+                            console.log('SSH 连接已建立');
+                            term.write(`Zero Terminal Client. \r\n \r\n`);
 
-                            channel = ch;
+                            // 创建 SSH 通道
+                            conn.shell((err, ch) => {
+                                if (err) {
+                                    console.error(err);
+                                    term.writeln('创建 SSH 通道失败');
+                                    term.dispose();
+                                    return;
+                                }
 
-                            // 将通道的数据发送到终端
-                            channel.on('data', (data) => {
-                                term.write(data);
+                                channel = ch;
+
+                                // 将通道的数据发送到终端
+                                channel.on('data', (data) => {
+                                    term.write(data);
+                                });
+
+                                // 关闭 SSH 连接时关闭终端和通道
+                                conn.on('close', () => {
+                                    term.dispose();
+                                    channel.close();
+                                });
                             });
 
-                            // 关闭 SSH 连接时关闭终端和通道
-                            conn.on('close', () => {
-                                term.dispose();
-                                channel.close();
+                            // 将终端的输出写入 SSH 通道
+                            term.onData((data) => {
+                                if (channel) {
+                                    channel.write(data);
+                                }
                             });
                         });
 
-                        // 将终端的输出写入 SSH 通道
-                        term.onData((data) => {
-                            if (channel) {
-                                channel.write(data);
-                            }
+                        // 客户端错误时触发
+                        conn.on('error', (err) => {
+                            console.error('SSH 连接错误:', err);
+                            term.writeln('SSH 连接错误');
+                            // term.dispose();
                         });
-                    });
 
-                    // 客户端错误时触发
-                    conn.on('error', (err) => {
-                        console.error('SSH 连接错误:', err);
-                        term.writeln('SSH 连接错误');
-                        term.dispose();
-                    });
-
-                    // 连接 ssh
-                    conn.connect({
-                        host: connection.address,
-                        port: connection.port,
-                        username: connection.username,
-                        password: connection.password
-                    });
+                        // 连接 ssh
+                        conn.connect({
+                            host: connection.address,
+                            port: connection.port,
+                            username: connection.username,
+                            password: connection.password
+                        });
+                    }, 1000)
+                },
+                showTerm(tab) {
+                    this.core.activeId = tab.termId
                 },
                 createConnection() { // 创建 SSH 连接时, connection 置空
                     let modal = new bootstrap.Modal(document.getElementById('saveSshConnection'));
