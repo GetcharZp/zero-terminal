@@ -185,7 +185,7 @@
                         // 连接成功时触发
                         conn.on('ready', () => {
                             console.log('SSH 连接已建立');
-                            term.write(`Zero Terminal Client. \r\n \r\n`);
+                            term.write(`Powered by [\x1b[36mZero Terminal\x1b[0m] \r\n \r\n`);
 
                             // 创建 SSH 通道
                             conn.shell((err, ch) => {
