@@ -192,11 +192,14 @@
                                 if (err) {
                                     console.error(err);
                                     term.writeln('创建 SSH 通道失败');
-                                    term.dispose();
+                                    // term.dispose();
                                     return;
                                 }
 
                                 channel = ch;
+
+                                // 更新终端大小，以便 SSH 工具适应新的终端宽高
+                                channel.setWindow(term.rows, term.cols);
 
                                 // 将通道的数据发送到终端
                                 channel.on('data', (data) => {
@@ -231,6 +234,15 @@
                             port: connection.port,
                             username: connection.username,
                             password: connection.password
+                        });
+
+                        // 监听终端大小调整的事件
+                        window.addEventListener('resize', () => {
+                            fitAddon.fit();
+                            // 获取调整后的终端宽高
+                            const { rows, cols } = term;
+                            // 发送宽高信息给 SSH 工具
+                            channel.setWindow(rows, cols);
                         });
                     }, 1000)
                 },
