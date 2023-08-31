@@ -19,7 +19,7 @@
         <div v-if="connectionList.length > 0" class="zt-main">
             <div class="row">
                 <!-- 连接列表 -->
-                <div class="col-md-3">
+                <div class="col-md-3" style="height: 95vh; overflow: auto">
                     <div><button class="btn btn-primary" @click="createConnection" style="width: 100%; margin: 15px 0">创建连接</button></div>
                     <div class="zt-conn-main" v-for="conn in connectionList">
                         <span style="cursor: pointer;">{{ conn.name }}</span>
@@ -164,8 +164,8 @@
                     // 最大 index 累加
                     this.core.index++;
 
-                    // 延时等待vue创建dom
-                    setTimeout(() => {
+                    // 在DOM创建后执行的代码
+                    this.$nextTick(() => {
                         // 获取终端容器元素
                         // let terminalElem = document.getElementById('terminal-container');
                         let terminalElem = document.getElementById(activeId);
@@ -188,7 +188,15 @@
                             term.write(`Powered by [\x1b[36mZero Terminal\x1b[0m] \r\n \r\n`);
 
                             // 创建 SSH 通道
-                            conn.shell((err, ch) => {
+                            conn.shell(
+                                // 启用伪终端
+                                {
+                                    term: 'xterm',
+                                    rows: term.rows,
+                                    cols: term.cols,
+                                    usePty: true
+                                },
+                                (err, ch) => {
                                 if (err) {
                                     console.error(err);
                                     term.writeln('创建 SSH 通道失败');
@@ -224,6 +232,7 @@
                         // 客户端错误时触发
                         conn.on('error', (err) => {
                             console.error('SSH 连接错误:', err);
+                            term.write(`Powered by [\x1b[36mZero Terminal\x1b[0m] \r\n \r\n`);
                             term.writeln('SSH 连接错误');
                             // term.dispose();
                         });
@@ -244,7 +253,7 @@
                             // 发送宽高信息给 SSH 工具
                             channel.setWindow(rows, cols);
                         });
-                    }, 1000)
+                    })
                 },
                 showTerm(tab) {
                     this.core.activeId = tab.termId
