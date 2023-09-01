@@ -1,4 +1,4 @@
-const {app, BrowserWindow} = require('electron')
+const {app, BrowserWindow, Menu, dialog, shell} = require('electron')
 const path = require('path')
 const electronReload = require('electron-reload')
 const newAppService = require('./src/service/app.js')
@@ -15,7 +15,7 @@ const createWindow = () => {
             // 关闭上下文隔离
             contextIsolation: false,
             // 允许使用开发工具
-            devTools: true 
+            // devTools: true
         }
     })
 
@@ -47,13 +47,39 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
 })
 
-// 监听并重新加载指定的文件或目录
-electronReload(__dirname, {
-    electron: path.join(__dirname, 'node_modules', '.bin', 'electron')
-});
-
-app.on('upgrade', function upgrade(request, socket, head) {
-    wss.handleUpgrade(request, socket, head, function done(ws) {
-        wss.emit('connection', ws, request);
+// 监听并重新加载指定的文件或目录 (开发环境)
+if (process.env.npm_lifecycle_event === 'start') {
+    electronReload(__dirname, {
+        electron: path.join(__dirname, 'node_modules', '.bin', 'electron')
     });
-});
+}
+
+// 自定义菜单
+// 创建一个自定义菜单模板
+const template = [
+    {
+        label: 'Help',
+        submenu: [
+            {
+                label: 'About',
+                click: async () => {
+                    const version = app.getVersion();
+                    const name = app.getName();
+                    try {
+                        await dialog.showMessageBox({
+                            title: 'About',
+                            message: `Copyright: ${name} \r\nVersion: ${version}`,
+                            buttons: ['OK']
+                        });
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+            },
+        ]
+    }
+];
+// 使用自定义菜单模板创建菜单
+const menu = Menu.buildFromTemplate(template);
+// 设置应用程序菜单
+Menu.setApplicationMenu(menu);
