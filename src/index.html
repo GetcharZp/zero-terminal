@@ -34,12 +34,15 @@
                 <!-- ssh 终端 -->
                 <div id="terminal-container" class="col-md-9">
                     <ul class="nav nav-pills" style="margin: 10px 0;">
-                        <li class="nav-item" v-for="tab in core.tabs" @click="showTerm(tab)">
-                            <a class="nav-link" href="#" :class="{ 'active': tab.termId === core.activeId}">{{ tab.name }}</a>
+                        <li class="nav-item" v-for="(tab, index) in core.tabs" @click="showTerm(tab)">
+                            <a class="nav-link" href="#" :class="{ 'active': tab.termId === core.activeId}">
+                                {{ tab.name }}
+                                <span class="btn btn-danger" @click.stop="deleteTerm(tab, index)">删除</span>
+                            </a>
                         </li>
                     </ul>
-                    <div v-for="tab in core.tabs">
-                        <div :id="tab.termId" v-show="tab.termId === core.activeId" style="height: 90vh;"></div>
+                    <div v-for="term in core.terms">
+                        <div :id="term.termId" v-show="term.termId === core.activeId" style="height: 90vh;"></div>
                     </div>
                 </div>
             </div>
@@ -136,7 +139,8 @@
                 core: {
                     index: 0,
                     activeId: "",
-                    tabs: []
+                    tabs: [],
+                    terms: []
                 },
             },
             mounted() {
@@ -156,11 +160,14 @@
                     // 激活ID
                     let activeId = "zero-term" + this.core.index;
                     this.core.activeId = activeId;
-                    // 新增导航
-                    this.core.tabs.push({
+                    let newTerm = {
                         name: connection.name,
                         termId: activeId
-                    });
+                    };
+                    // 新增导航
+                    this.core.tabs.push(newTerm);
+                    // 新增term
+                    this.core.terms.push(newTerm);
                     // 最大 index 累加
                     this.core.index++;
 
@@ -257,6 +264,19 @@
                 },
                 showTerm(tab) {
                     this.core.activeId = tab.termId
+                },
+                deleteTerm(tab, index) {
+                    this.core.tabs.splice(index, 1);
+                    // 激活新的 term
+                    if (this.core.activeId === tab.termId) {
+                        let newIndex = index - 1;
+                        if (newIndex === -1) {
+                            newIndex = 0;
+                        }
+                        if (this.core.tabs.length > 0) {
+                            this.core.activeId = this.core.tabs[newIndex].termId;
+                        }
+                    }
                 },
                 createConnection() { // 创建 SSH 连接时, connection 置空
                     let modal = new bootstrap.Modal(document.getElementById('saveSshConnection'));

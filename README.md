@@ -53,3 +53,5 @@ yarn make
 ```
 
 ## Show Image
+
+![show-index.png](docs/img/show-index.png)
