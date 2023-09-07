@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/xterm.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-icons.min.css">
     <script src="assets/js/bootstrap.bundle.min.js" type="application/javascript"></script>
     <script src="assets/js/vue.min.js" type="application/javascript"></script>
     <script src="assets/js/xterm.js" type="application/javascript"></script>
@@ -21,14 +22,35 @@
                 <!-- 连接列表 -->
                 <div class="col-md-3" style="height: 95vh; overflow: auto">
                     <div><button class="btn btn-primary" @click="createConnection" style="width: 100%; margin: 15px 0">创建连接</button></div>
-                    <div class="zt-conn-main" v-for="conn in connectionList">
-                        <span style="cursor: pointer;">{{ conn.name }}</span>
-                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;"
-                            @click="editConnection(conn)">编辑</span>
-                        <span style="color: red;  margin-left: 10px; cursor: pointer;"
-                            @click="confirmDeleteConnection(conn)">删除</span>
-                        <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;"
-                              @click="initTerminal(conn)">连接</span>
+                    <div>
+                        <button v-if="core.activeLeftNav === 'conn'" class="btn btn-primary" style="width: 48%" @click="changeLeftNav('conn')">连接管理</button>
+                        <button v-else class="btn btn-outline-primary" style="width: 48%" @click="changeLeftNav('conn')">连接管理</button>
+                        <button v-if="core.activeLeftNav === 'file'" class="btn btn-primary" style="width: 48%; float: right" @click="changeLeftNav('file')">文件管理</button>
+                        <button v-else class="btn btn-outline-primary" style="width: 48%; float: right" @click="changeLeftNav('file')">文件管理</button>
+                    </div>
+                    <div v-if="core.activeLeftNav === 'conn'">
+                        <div class="zt-conn-main" v-for="conn in connectionList">
+                            <span style="cursor: pointer;">{{ conn.name }}</span>
+                            <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;"
+                                  @click="editConnection(conn)">编辑</span>
+                            <span style="color: red;  margin-left: 10px; cursor: pointer;"
+                                  @click="confirmDeleteConnection(conn)">删除</span>
+                            <span style="color: #0d6efd; margin-left: 10px; cursor: pointer;"
+                                  @click="initTerminal(conn)">连接</span>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <div class="input-group flex-nowrap" style="padding: 10px 0">
+                            <span class="input-group-text" id="addon-wrapping">当前路径</span>
+                            <input type="text" class="form-control" placeholder="filepath" aria-label="filepath"
+                                   aria-describedby="addon-wrapping" v-model="core.filepathMap[core.activeId]" @change="changeFilepath()">
+                        </div>
+                        <div v-for="file in files">
+                            <div @click="fileClick(file)">
+                                <i v-if="file.attrs.mode === 16877 || file.attrs.mode === 16893" class="bi-folder" style="font-size: 1rem; color: cornflowerblue;"></i>
+                                <span>{{ file.filename }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <!-- ssh 终端 -->
@@ -140,8 +162,12 @@
                     index: 0,
                     activeId: "",
                     tabs: [],
-                    terms: []
+                    terms: [],
+                    connMap: {}, // 激活的ID => conn
+                    activeLeftNav: "conn",
+                    filepathMap: {}, // 激活的ID => 文件夹路径
                 },
+                files: [], // 文件列表
             },
             mounted() {
             },
@@ -227,6 +253,9 @@
                                     channel.close();
                                 });
                             });
+
+                            // 保存成功激活的连接
+                            this.core.connMap[activeId] = conn;
 
                             // 将终端的输出写入 SSH 通道
                             term.onData((data) => {
@@ -319,6 +348,43 @@
                     });
                     this.initConnections();
                 },
+                changeLeftNav(type) {
+                    this.core.activeLeftNav = type;
+
+                    // 打开文件系统
+                    if (type === 'file' && this.core.activeId) {
+                        let path = this.core.filepathMap[this.core.activeId] ? this.core.filepathMap[this.core.activeId] : "/";
+                        this.sftpReaddir(path);
+                    }
+                },
+                sftpReaddir(path) {
+                    let conn = this.core.connMap[this.core.activeId];
+                    this.core.filepathMap[this.core.activeId] = path;
+                    conn.sftp((err, sftp) => {
+                        if (err) console.log(err);
+                        sftp.readdir(path, (err, list) => {
+                            if (err) console.log(err);
+
+                            // 按文件的名称排序
+                            list.sort((a, b) => {
+                                return a.filename.localeCompare(b.filename);
+                            });
+
+                            this.files = list;
+                            console.dir(list);
+                        });
+                    });
+                },
+                fileClick(file) {
+                    // 文件夹双击进入下一层
+                    if (file.attrs.mode === 16877 || file.attrs.mode === 16893) {
+                        let newFilepath = this.core.filepathMap[this.core.activeId] + file.filename + "/";
+                        this.sftpReaddir(newFilepath);
+                    }
+                },
+                changeFilepath() {
+                    this.sftpReaddir(this.core.filepathMap[this.core.activeId])
+                }
             }
         })
     </script>

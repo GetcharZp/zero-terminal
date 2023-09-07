@@ -15,7 +15,7 @@ const createWindow = () => {
             // 关闭上下文隔离
             contextIsolation: false,
             // 允许使用开发工具
-            // devTools: true
+            devTools: true
         }
     })
 
