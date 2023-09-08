@@ -140,11 +140,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- 提示框 -->
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <strong class="me-auto">ZeroTerminal</strong>
+                    <small>{{ toast.subTitle }}</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body" v-html="toast.content">
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        const { ipcRenderer } = require('electron');
+        const { ipcRenderer, shell } = require('electron');
         const { Client } = require('ssh2');
+        const fs = require('fs');
 
         new Vue({
             el: '#app',
@@ -168,6 +182,10 @@
                     filepathMap: {}, // 激活的ID => 文件夹路径
                 },
                 files: [], // 文件列表
+                toast: {
+                    subTitle: "",
+                    content: ""
+                }
             },
             mounted() {
             },
@@ -375,18 +393,56 @@
                         });
                     });
                 },
+                fileDownload(filename) {
+                    let that = this;
+                    // 打开文件选择器
+                    ipcRenderer.invoke('showSaveDialog', {'filename': filename}).then(localFilepath => {
+                        // 下载文件
+                        if (localFilepath) {
+                            let remoteFilepath = this.core.filepathMap[this.core.activeId] + filename;
+                            let conn = this.core.connMap[this.core.activeId];
+                            conn.sftp((err, sftp) => {
+                                if (err) console.log(err);
+
+                                const readStream = sftp.createReadStream(remoteFilepath);
+                                const writeStream = fs.createWriteStream(localFilepath);
+
+                                readStream.pipe(writeStream);
+
+                                readStream.on('close', function() {
+                                    console.log('文件下载完成！');
+                                    that.showLiveToast({'subTitle': 'now', 'content': '文件:' + filename + ' 下载完成, ' +
+                                            `<a onclick='showItemInFolder("${localFilepath.replace(/\\/g, '\\\\')}")' style="color: #0a53be; text-underline: #0a53be; cursor: pointer">打开文件所在位置</a>`});
+                                });
+                            });
+                        }
+                    });
+                },
                 fileClick(file) {
                     // 文件夹双击进入下一层
                     if (file.attrs.mode === 16877 || file.attrs.mode === 16893) {
                         let newFilepath = this.core.filepathMap[this.core.activeId] + file.filename + "/";
                         this.sftpReaddir(newFilepath);
+                    } else {
+                        this.fileDownload(file.filename);
+                        // this.showSaveFileDialog(file.filename);
                     }
+                },
+                showLiveToast(toastContent) {
+                    this.toast = toastContent;
+                    const toastLiveExample = document.getElementById('liveToast');
+                    const toast = new bootstrap.Toast(toastLiveExample);
+                    toast.show();
                 },
                 changeFilepath() {
                     this.sftpReaddir(this.core.filepathMap[this.core.activeId])
                 }
             }
-        })
+        });
+
+        function showItemInFolder(path) {
+            shell.showItemInFolder(path);
+        }
     </script>
 </body>
 
