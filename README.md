@@ -54,5 +54,8 @@ yarn make
 
 ## Show Image
 
++ SSH 终端
 ![show-index.png](docs/img/show-index.png)
+
++ SFTP
 ![show-file.png](docs/img/show-file.png)

@@ -67,6 +67,28 @@ const newAppService = () => {
         }
     });
 
+    // 打开选择文件的弹出框
+    ipcMain.handle('openFileResourceDialog', async (_,req) => {
+        const options = {
+            title: '选择文件位置',
+            buttonLabel: '确认', // 按钮显示的文本
+            filters: [
+                {name: '文本文件', extensions: ['txt']},
+                {name: '所有文件', extensions: ['*']}
+            ],
+            properties: ['openFile'] // 可选，添加此属性以显示覆盖确认对话框
+        };
+
+        try {
+            const result = await dialog.showOpenDialog(options);
+            if (!result.canceled) {
+                return result.filePaths[0];
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
     return ipcMain
 }
 

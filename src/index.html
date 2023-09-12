@@ -45,6 +45,9 @@
                             <input type="text" class="form-control" placeholder="filepath" aria-label="filepath"
                                    aria-describedby="addon-wrapping" v-model="core.filepathMap[core.activeId]" @change="changeFilepath()">
                         </div>
+                        <div>
+                            <button class="btn btn-primary" @click="fileUpload">文件上传</button>
+                        </div>
                         <div v-for="file in files">
                             <div @click="fileClick(file)">
                                 <i v-if="file.attrs.mode === 16877 || file.attrs.mode === 16893" class="bi-folder" style="font-size: 1rem; color: cornflowerblue;"></i>
@@ -159,6 +162,7 @@
         const { ipcRenderer, shell } = require('electron');
         const { Client } = require('ssh2');
         const fs = require('fs');
+        const path = require('path');
 
         new Vue({
             el: '#app',
@@ -436,6 +440,35 @@
                 },
                 changeFilepath() {
                     this.sftpReaddir(this.core.filepathMap[this.core.activeId])
+                },
+                fileUpload() {
+                    let that = this;
+
+                    // 打开文件选择器
+                    ipcRenderer.invoke('openFileResourceDialog').then(localFilepath => {
+                        // 上传文件
+                        if (localFilepath) {
+                            let filename = path.basename(localFilepath)
+                            let remoteFilepath = this.core.filepathMap[this.core.activeId] + filename;
+                            let conn = this.core.connMap[this.core.activeId];
+                            conn.sftp((err, sftp) => {
+                                if (err) {
+                                    console.log(err);
+                                    that.showLiveToast({'subTitle': 'now', 'content': '上传失败, ' + err});
+                                    return;
+                                }
+                                sftp.fastPut(localFilepath, remoteFilepath, (err) => {
+                                    if (err) {
+                                        console.log(err);
+                                        that.showLiveToast({'subTitle': 'now', 'content': '上传失败, ' + err});
+                                        return;
+                                    }
+                                    console.log('文件上传成功');
+                                    that.showLiveToast({'subTitle': 'now', 'content': '文件:' + filename + ' 上传成功'});
+                                });
+                            });
+                        }
+                    });
                 }
             }
         });
